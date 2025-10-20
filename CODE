@@ -1,0 +1,49 @@
+ // IoT-Based Weather Monitoring System Code
+ #include <ESP8266WiFi.h>
+ #include <DHT.h>
+ #include <Wire.h>
+ #include <LiquidCrystal_I2C.h>
+ #include <ThingSpeak.h>
+ // Wi-Fi and ThingSpeak setup
+ const char* ssid = "your␣ssid";
+ const char* password = "password";
+ unsigned long myChannelNumber = channel_id;
+ const char* myWriteAPIKey = "write_api_key";
+ WiFiClient client;
+ // DHT11 setup
+ #define DHTPIN 2
+ #define DHTTYPE DHT11
+ DHT dht(DHTPIN, DHTTYPE);
+ // Sensor pins
+ #define LDR_PIN A0
+ #define RAIN_DIGITAL_PIN D5
+ LiquidCrystal_I2C lcd(0x27,16,2);
+ void setup() {
+ Serial.begin(115200);
+ Wire.begin(D2, D1);
+ lcd.init(); lcd.backlight();
+ dht.begin();
+ pinMode(LDR_PIN, INPUT);
+ pinMode(RAIN_DIGITAL_PIN, INPUT);
+ WiFi.begin(ssid, password);
+ while (WiFi.status() != WL_CONNECTED) { delay(500); }
+ ThingSpeak.begin(client);
+ }
+ void loop() {
+ float temp = dht.readTemperature();
+ float hum = dht.readHumidity();
+ int ldrValue = analogRead(LDR_PIN);
+ int rainDigital = digitalRead(RAIN_DIGITAL_PIN);
+ lcd.clear();
+ lcd.setCursor(0,0);
+ lcd.print("T:"); lcd.print(temp); lcd.print("C␣H:"); lcd.print(hum);
+ lcd.setCursor(0,1);
+ lcd.print((ldrValue<800)?"Bright":"Dark");
+ lcd.print("␣"); lcd.print((rainDigital==0)?"Rainy":"Dry");
+ ThingSpeak.setField(1, temp);
+ ThingSpeak.setField(2, hum);
+ ThingSpeak.setField(3, ldrValue);
+ ThingSpeak.setField(4, rainDigital);
+ ThingSpeak.writeFields(myChannelNumber, myWriteAPIKey);
+ delay(20000);
+ }
